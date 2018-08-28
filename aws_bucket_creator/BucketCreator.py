@@ -5,6 +5,7 @@ import botocore
 import boto3
 import sys
 import json
+import time
 from botocore.exceptions import ClientError
 
 
@@ -211,7 +212,35 @@ class BucketCreator:
 
                 except ClientError as e:
                     print('Error creating tags: '+str(e))
-                    return
+
+                    if 'NoSuchTagSet' in str(e):
+                        print('We need to wait for 90 seconds while the bucket gets created in AWS')
+                        time.sleep(90)
+
+                        try:
+
+                            data = []
+                            for tag in tags_to_check:
+                                temp_dict = {}
+                                temp_dict['Key'] = str(tag)
+                                temp_dict['Value'] = str(self.tags[tag])
+
+                                data.append(temp_dict)
+                            if self.debug:
+                                print('new tag info: ' + str(data) + lineno())
+
+                            response = self.client.put_bucket_tagging(
+                                Bucket=str(self.bucket_name),
+                                Tagging={
+                                    'TagSet': data
+                                }
+                            )
+
+                            if self.debug:
+                                print('response: ' + str(response))
+
+                        except ClientError as err:
+                            print('Error creating tags: ' + str(err))
 
             else:
                 print('Create the bucket before trying to add tags')

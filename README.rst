@@ -48,5 +48,6 @@ Getting help
 .. code:: console
 
    $bucket-creator create -b test-bucket -p my-profile -r Name,Project,DeployedBy,ResourceOwner -t test,io,test,test -w arn:aws:iam::12343434:root
-   ...
+
+
 
