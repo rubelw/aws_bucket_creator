@@ -1,0 +1,16 @@
+LICENSE
+MANIFEST.in
+README.rst
+setup.cfg
+setup.py
+aws_bucket_creator/BucketCreator.py
+aws_bucket_creator/__init__.py
+aws_bucket_creator/command.py
+aws_bucket_creator.egg-info/PKG-INFO
+aws_bucket_creator.egg-info/SOURCES.txt
+aws_bucket_creator.egg-info/dependency_links.txt
+aws_bucket_creator.egg-info/entry_points.txt
+aws_bucket_creator.egg-info/requires.txt
+aws_bucket_creator.egg-info/top_level.txt
+test/__init__.py
+test/test_cloudfront_distribution.py
