@@ -21,7 +21,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.10')
+@click.version_option(version='0.0.11')
 def cli():
     pass
 
@@ -130,6 +130,11 @@ def start_create(
 
     if tags:
         config_dict['tags']= tags
+
+    if 'logging_enable' in ini['parameters']:
+        config_dict['logging_enabled'] = ini['parameters']['logging_enabled']
+    else:
+        config_dict['logging_enabled']= False
 
     if 'public_write_access' in ini['parameters']:
         config_dict['public_write_access'] = ini['parameters']['public_write_access']

@@ -43,6 +43,7 @@ class BucketCreator:
         self.public_write_access = False
         self.region = None
         self.event_lambda_arn = None
+        self.logging_enabled = False
 
 
         if config_block:
@@ -57,6 +58,9 @@ class BucketCreator:
 
         if 'tags' in self._config:
             self.tags = self._config['tags']
+
+        if 'logging_enabled' in self._config:
+            self.logging_enabled = self._config['logging_enabled']
 
         if 'region' in self._config:
             self.region = self._config['region']
@@ -323,53 +327,54 @@ class BucketCreator:
 
     def create_logging(self):
 
+        if self.logging_enabled:
 
-        try:
-            response = self.client.get_bucket_logging(
-                Bucket=self.bucket_name
-            )
-
-            if self.debug:
-                print('bucket logging response: '+str(response))
-
-
-            if not 'LoggingEnabled' in response:
-
-                if self.debug:
-                    print('no bucket logging')
-
-                response = self.client.put_bucket_logging(
-                    Bucket=self.bucket_name,
-                    BucketLoggingStatus={
-                        'LoggingEnabled': {
-                            'TargetBucket': self.bucket_name,
-                            'TargetPrefix': 'user/',
-                            'TargetGrants': [
-                                {
-                                    'Grantee': {
-                                        'Type': 'Group',
-                                        'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
-                                    },
-                                    'Permission': 'WRITE'
-                                },
-                                {
-                                    'Grantee': {
-                                        'Type': 'Group',
-                                        'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
-                                    },
-                                    'Permission': 'READ'
-                                },
-                            ]
-                        }
-                    }
-
+            try:
+                response = self.client.get_bucket_logging(
+                    Bucket=self.bucket_name
                 )
 
                 if self.debug:
-                    print(response)
+                    print('bucket logging response: '+str(response))
 
-        except ClientError as e:
-            print('Error creating bucket logging: '+str(e))
+
+                if not 'LoggingEnabled' in response:
+
+                    if self.debug:
+                        print('no bucket logging')
+
+                    response = self.client.put_bucket_logging(
+                        Bucket=self.bucket_name,
+                        BucketLoggingStatus={
+                            'LoggingEnabled': {
+                                'TargetBucket': self.bucket_name,
+                                'TargetPrefix': 'user/',
+                                'TargetGrants': [
+                                    {
+                                        'Grantee': {
+                                            'Type': 'Group',
+                                            'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                        },
+                                        'Permission': 'WRITE'
+                                    },
+                                    {
+                                        'Grantee': {
+                                            'Type': 'Group',
+                                            'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                        },
+                                        'Permission': 'READ'
+                                    },
+                                ]
+                            }
+                        }
+
+                    )
+
+                    if self.debug:
+                        print(response)
+
+            except ClientError as e:
+                print('Error creating bucket logging: '+str(e))
 
 
     def create_encryption(self):
