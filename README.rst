@@ -40,15 +40,15 @@ Getting help
 
 .. code:: console
 
-   $bucket-creator create -i config/my.ini
+   bucket-creator create -i config/my.ini
 
 Options
 
-    acl can be: 'private', 'public-read', 'public-read-write', 'authenticated-read', 'aws-exec-read', 'bucket-owner-read','bucket-owner-full-control'
-
-    aes-256 encryption is turned-on by default, and can not be turned off for security reasons
-
-    public_read access can not be turned on for security reasons
+    * acl can be: 'private', 'public-read', 'public-read-write', 'authenticated-read', 'aws-exec-read', 'bucket-owner-read','bucket-owner-full-control'
+    * aes-256 encryption is turned-on by default, and can not be turned off for security reasons
+    * public_read access can not be turned on for security reasons
+    * default days before going to standard-ia is 30
+    * default days before going to glacier is 365
 
 Example Ini file
 
@@ -56,10 +56,10 @@ Example Ini file
 
     [environment]
     region = us-east-1
-    profile = myprofile
+    profile = my_aws_profile
 
     [tags]
-    ResourceOwner = no_me
+    ResourceOwner = not_me
     Project = some project
     DeployedBy = me
 

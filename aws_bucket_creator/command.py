@@ -4,16 +4,14 @@ The command line interface to cfn_nagger.
 """
 from __future__ import absolute_import, division, print_function
 import sys
-import click
 import inspect
-import subprocess
-import boto3
-import aws_bucket_creator
-from configparser import RawConfigParser
-from aws_bucket_creator import BucketCreator
 import logging
-import json
 import traceback
+from configparser import RawConfigParser
+import boto3
+import click
+from aws_bucket_creator import BucketCreator
+import aws_bucket_creator
 
 def lineno():
     """Returns the current line number in our program."""
@@ -21,7 +19,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.14')
+@click.version_option(version='0.0.15')
 def cli():
     pass
 
@@ -29,11 +27,11 @@ def cli():
 @cli.command()
 @click.option('--ini', '-i', help='INI file with needed information', required=True)
 @click.option('--version', '-v', help='Print version and exit', required=False, is_flag=True)
-@click.option('--debug',help='Turn on debugging', required=False, is_flag=True)
+@click.option('--debug', help='Turn on debugging', required=False, is_flag=True)
 def create(
-             ini,
-             version,
-             debug
+        ini,
+        version,
+        debug
     ):
     '''
     primary function for creating a bucket
@@ -98,7 +96,6 @@ def start_create(
 
     config_dict = {}
 
-
     if 'debug' in ini['parameters']:
 
         if ini['parameters']['debug']:
@@ -123,24 +120,24 @@ def start_create(
             found_name_tag = 1
         temp_dict = {}
         temp_dict['Key'] = tag
-        temp_dict['Value']= ini['tags'][tag]
+        temp_dict['Value'] = ini['tags'][tag]
         tags.append(temp_dict)
 
     # Add bucket name as tag
-    if found_name_tag<0:
-        temp_dict={}
+    if found_name_tag < 0:
+        temp_dict = {}
         temp_dict['Key'] = 'Name'
-        temp_dict['Value']= ini['parameters']['bucket_name']
+        temp_dict['Value'] = ini['parameters']['bucket_name']
         tags.append(temp_dict)
 
 
     if tags:
-        config_dict['tags']= tags
+        config_dict['tags'] = tags
 
     if 'logging_enable' in ini['parameters']:
         config_dict['logging_enabled'] = ini['parameters']['logging_enabled']
     else:
-        config_dict['logging_enabled']= False
+        config_dict['logging_enabled'] = False
 
     if 'public_write_access' in ini['parameters']:
         config_dict['public_write_access'] = ini['parameters']['public_write_access']
@@ -155,7 +152,7 @@ def start_create(
     else:
         config_dict['days_to_glacier'] = 365
 
-    if 'days_to_standarde_ia' in ini['parameters']:
+    if 'days_to_standard_ia' in ini['parameters']:
         config_dict['days_to_standard_ia'] = ini['parameters']['days_to_standard_ia']
     else:
         config_dict['days_to_standard_ia'] = 30
@@ -195,8 +192,8 @@ def find_myself():
     Returns:
        An Amazon region
     """
-    s = boto3.session.Session()
-    return s.region_name
+    my_session = boto3.session.Session()
+    return my_session.region_name
 
 def read_config_info(ini_file):
     """
@@ -216,7 +213,7 @@ def read_config_info(ini_file):
         for section in config.sections():
             the_stuff[str(section)] = {}
             for option in config.options(section):
-                the_stuff[str(section)][str(option)] = str(config.get(section, option.replace('\n','')))
+                the_stuff[str(section)][str(option)] = str(config.get(section, option.replace('\n', '')))
 
         return the_stuff
     except Exception as wtf:

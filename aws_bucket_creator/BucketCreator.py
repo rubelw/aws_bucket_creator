@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 import logging
 import inspect
-import botocore
-import boto3
+import os
 import sys
 import json
 import time
-import os
+import botocore
+import boto3
 from botocore.exceptions import ClientError
 from boto.s3.acl import ACL, Grant
 
@@ -18,11 +18,14 @@ def lineno():
 
 
 class BucketCreator:
+    """
+    Creates an S3 Bucket
+    """
 
     def __init__(self, config_block):
         """
         Initialize BucketCreator
-        :param config_block: 
+        :param config_block:
         """
 
         self.debug = False
@@ -99,7 +102,11 @@ class BucketCreator:
 
         # Get boto session
         if self.region:
-            self.session = boto3.session.Session(profile_name=self._config['aws_profile'], region_name=self.region)
+            self.session = boto3.session.Session(
+                profile_name=self._config['aws_profile'],
+                region_name=self.region
+            )
+
         elif self.aws_profile:
             self.session = boto3.session.Session(profile_name=self._config['aws_profile'])
         else:
@@ -110,8 +117,6 @@ class BucketCreator:
 
         if self.debug:
             print('s3 bucket: '+str(self.bucket_name))
-
-
 
 
     def create(self):
@@ -136,7 +141,7 @@ class BucketCreator:
         self.create_tags()
         print('Bucket tags set')
 
-        if len(self.bucket_policy_principals)>0 and not self.bucket_policy_path:
+        if len(self.bucket_policy_principals) > 0 and not self.bucket_policy_path:
 
             if self.debug:
                 print('There are principals in the policy but no bucket policy path'+lineno())
@@ -148,7 +153,7 @@ class BucketCreator:
                     print('## There is a bucket policy being passed-in')
 
             self.add_bucket_policy()
-        elif len(self.bucket_policy_principals)<1 and self.bucket_policy and not self.bucket_policy_path:
+        elif len(self.bucket_policy_principals) < 1 and self.bucket_policy and not self.bucket_policy_path:
             if self.debug:
                 print('## There is a bucket policy being passed-in')
 
@@ -166,7 +171,10 @@ class BucketCreator:
 
 
     def create_bucket_notifications(self):
-
+        """
+        Create bucket notification
+        :return:
+        """
         if self.event_lambda_arn:
 
             try:
@@ -178,7 +186,7 @@ class BucketCreator:
                                 'Id': 'MyEvent',
                                 'LambdaFunctionArn': self.event_lambda_arn,
                                 'Events': [
-                                     's3:ObjectCreated:Put',
+                                    's3:ObjectCreated:Put',
                                 ]
                             }
                         ]
@@ -188,13 +196,16 @@ class BucketCreator:
                 if self.debug:
                     print('response: ' + str(response))
 
-            except ClientError as e:
-                print('Could not get create bucket event: ' + str(e))
+            except ClientError as err:
+                print('Could not get create bucket event: ' + str(err))
 
 
 
     def get_bucket_owner_id(self):
-
+        """
+        Get bucket owner id
+        :return:
+        """
         try:
             response = self.client.get_bucket_acl(
                 Bucket=self.bucket_name
@@ -207,13 +218,16 @@ class BucketCreator:
                 self.bucket_owner_id = response['Owner']['ID']
                 self.bucket_owner_display_name = response['Owner']['DisplayName']
 
-        except ClientError as e:
-            print('Could not get bucket owner id: '+str(e))
+        except ClientError as err:
+            print('Could not get bucket owner id: '+str(err))
 
 
 
     def create_acl(self):
-
+        """
+        Create bucket ACL
+        :return:
+        """
         try:
             response = self.client.get_bucket_logging(
                 Bucket=self.bucket_name
@@ -288,18 +302,22 @@ class BucketCreator:
             if self.debug:
                 print(response)
 
-        except ClientError as e:
-            print('Error creating bucket acl: '+str(e))
+        except ClientError as err:
+            print('Error creating bucket acl: '+str(err))
 
 
 
     def load_bucket_policy(self):
+        """
+        Load a bucket policy from a file
+        :return:
+        """
         if self.debug:
             print('load bucket policy')
             print('current directory is: ' + str(os.getcwd()))
 
         if str(self.bucket_policy_path).startswith('./'):
-            self.bucket_policy_path = str(os.getcwd())+'/'+str(self.bucket_policy_path.replace('./',''))
+            self.bucket_policy_path = str(os.getcwd())+'/'+str(self.bucket_policy_path.replace('./', ''))
 
             if self.debug:
                 print('new bucket path is: '+str(self.bucket_policy_path))
@@ -313,8 +331,8 @@ class BucketCreator:
             with open(self.bucket_policy_path, 'r') as tempfile:  # OSError if file exists or is invalid
                 pass
 
-            with open(self.bucket_policy_path) as f:
-                bucket_policy = json.dumps((json.load(f)))
+            with open(self.bucket_policy_path) as policy_file:
+                bucket_policy = json.dumps((json.load(policy_file)))
 
                 if self.debug:
                     print('bucket policy is: ' + str(self.bucket_policy)+lineno())
@@ -327,6 +345,10 @@ class BucketCreator:
 
 
     def create_logging(self):
+        """
+        Turn on logging for a bucket, or turn it off
+        :return:
+        """
 
         if self.debug:
             print('######################')
@@ -394,26 +416,23 @@ class BucketCreator:
                     if self.debug:
                         print(response)
 
-
-
-        except ClientError as e:
-            print('Error creating bucket logging: '+str(e))
-
-
-
-
+        except ClientError as err:
+            print('Error creating bucket logging: '+str(err))
 
     def create_encryption(self):
-
+        """
+        Set encryption on a bucket
+        :return:
+        """
         try:
             response = self.client.get_bucket_encryption(
                 Bucket=self.bucket_name
             )
             if self.debug:
                 print(response)
-        except ClientError as e:
+        except ClientError as err:
             if self.debug:
-                print('no bucket encryption')
+                print('no bucket encryption:'+str(err))
 
             response = self.client.put_bucket_encryption(
                 Bucket=self.bucket_name,
@@ -433,7 +452,10 @@ class BucketCreator:
 
 
     def add_lifecycle_policy(self):
-
+        """
+        Add a lifecycle policy to a bucket
+        :return:
+        """
         try:
             response = self.client.put_bucket_lifecycle_configuration(
                 Bucket=self.bucket_name,
@@ -442,7 +464,7 @@ class BucketCreator:
                         {
                             'ID': 'MoveToStandardIa',
                             'Filter': {
-                              'Prefix': ''
+                                'Prefix': ''
                             },
                             'Status': 'Enabled',
                             'Transitions': [
@@ -472,42 +494,51 @@ class BucketCreator:
 
             if self.debug:
                 print(response)
-        except ClientError as e:
-            print('Error adding bucket lifecycle policy: ' + str(e))
+        except ClientError as err:
+            print('Error adding bucket lifecycle policy: ' + str(err))
 
 
     def add_bucket_policy(self):
-        # Add bucket policy
+        """
+        Add a bucket policy
+        :return:
+        """
 
         try:
 
             if self.debug:
                 print('##############################')
-                print('policy is: '+str(str(self.bucket_policy).replace('"','\''))+lineno())
+                print('policy is: '+str(str(self.bucket_policy).replace('"', '\''))+lineno())
                 print('##############################')
 
 
             if self.bucket_policy_path:
-                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.loads(json.dumps(self.bucket_policy)))
+                response = self.client.put_bucket_policy(
+                    Bucket=self.bucket_name,
+                    Policy=json.loads(json.dumps(self.bucket_policy))
+                )
 
                 if self.debug:
                     print(response)
 
+            elif self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals) < 1):
 
-            elif self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals)<1):
+                temp_policy_string = self.bucket_policy.replace("\n", '').replace('\'', '"')
 
-
-                temp_policy_string = self.bucket_policy.replace("\n",'').replace('\'','"')
                 if self.debug:
                     print('temp_policy_string: '+str(temp_policy_string))
-                #temp_policy = json.dumps(json.loads(temp_policy_string))
+
                 dict_policy = json.loads(temp_policy_string)
 
                 if self.debug:
                     #print('policy as json: '+str(temp_policy))
                     print('policy as dict: '+str(json.loads(temp_policy_string)))
                     print('dict type: '+str(type(dict_policy)))
-                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.dumps(dict_policy).strip())
+
+                response = self.client.put_bucket_policy(
+                    Bucket=self.bucket_name,
+                    Policy=json.dumps(dict_policy).strip()
+                )
 
                 if self.debug:
                     print(response)
@@ -517,23 +548,26 @@ class BucketCreator:
                 if self.debug:
                     print(response)
 
-        except ClientError as e:
-            print('Error adding bucket policy: ' + str(e))
+        except ClientError as err:
+            print('Error adding bucket policy: ' + str(err))
 
 
     def create_bucket_policy(self):
-
+        """
+        Create S3 Bucket Policy
+        :return:
+        """
         data = {}
         data['Version'] = "2012-10-17"
         data['Statement'] = []
         data['Statement'].append({})
-        data['Statement'][0]["Sid"]="AllowRoot"
-        data['Statement'][0]["Effect"]="Allow"
-        data['Statement'][0]["Principal"]= {}
-        data['Statement'][0]["Principal"]["AWS"]= []
-        data['Statement'][0]["Action"]= []
+        data['Statement'][0]["Sid"] = "AllowRoot"
+        data['Statement'][0]["Effect"] = "Allow"
+        data['Statement'][0]["Principal"] = {}
+        data['Statement'][0]["Principal"]["AWS"] = []
+        data['Statement'][0]["Action"] = []
         data['Statement'][0]["Action"].append("s3:*")
-        data['Statement'][0]["Resource"]=[]
+        data['Statement'][0]["Resource"] = []
         data['Statement'][0]["Resource"].append("arn:aws:s3:::"+str(self.bucket_name)+"/*")
         data['Statement'][0]["Resource"].append("arn:aws:s3:::"+str(self.bucket_name))
 
@@ -541,9 +575,13 @@ class BucketCreator:
         for principal in self.bucket_policy_principals:
             data["Statement"][0]["Principal"]["AWS"].append(principal)
 
-        self.bucket_policy=data
+        self.bucket_policy = data
 
     def create_tags(self):
+        """
+        Create tags on S3 bucket
+        :return:
+        """
         if self.debug:
             print('create tags'+lineno())
 
@@ -573,8 +611,8 @@ class BucketCreator:
                 if self.debug:
                     print('response: '+str(response))
 
-            except ClientError as e:
-                print('Error creating tags: '+str(e))
+            except ClientError as err:
+                print('Error creating tags: '+str(err))
 
         else:
             print('Create the bucket before trying to add tags')
@@ -582,6 +620,10 @@ class BucketCreator:
 
 
     def create_bucket(self):
+        """
+        Create an S3 Bucket
+        :return:
+        """
         if self.debug:
             print('create bucket'+lineno())
             print('bucket name: '+str(self.bucket_name))
@@ -600,22 +642,26 @@ class BucketCreator:
                 if self.debug:
                     print('response: '+str(response)+lineno())
 
-            except ClientError as e:
-                print('Error: '+str(e))
+            except ClientError as err:
+                print('Error: '+str(err))
                 sys.exit(1)
 
 
     def check_bucket(self):
+        """
+        Check if a bucket exists
+        :return:
+        """
         try:
             self.resource.meta.client.head_bucket(Bucket=self.bucket_name)
             if self.debug:
                 print("Bucket Already Exists!")
 
             return True
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError as err:
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the bucket does not exist.
-            error_code = int(e.response['Error']['Code'])
+            error_code = int(err.response['Error']['Code'])
             if error_code == 403:
                 if self.debug:
                     print("Bucket Already Exists - Private Bucket. Forbidden Access!")
@@ -624,7 +670,3 @@ class BucketCreator:
                 if self.debug:
                     print("Bucket Does Not Exist!")
                 return False
-
-
-
-
