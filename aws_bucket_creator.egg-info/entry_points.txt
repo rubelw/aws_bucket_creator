@@ -1,4 +1,0 @@
-
-        [console_scripts]
-        bucket-creator=aws_bucket_creator.command:cli
-    

@@ -487,19 +487,27 @@ class BucketCreator:
                 print('##############################')
 
 
-            if self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals)<1):
-
-
-                temp_policy_string = self.bucket_policy.replace("\n",'')
-                temp_policy = json.dumps(json.loads(temp_policy_string))
-
-                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=temp_policy)
+            if self.bucket_policy_path:
+                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.loads(json.dumps(self.bucket_policy)))
 
                 if self.debug:
                     print(response)
 
-            if self.bucket_policy_path:
-                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.loads(json.dumps(self.bucket_policy)))
+
+            elif self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals)<1):
+
+
+                temp_policy_string = self.bucket_policy.replace("\n",'').replace('\'','"')
+                if self.debug:
+                    print('temp_policy_string: '+str(temp_policy_string))
+                #temp_policy = json.dumps(json.loads(temp_policy_string))
+                dict_policy = json.loads(temp_policy_string)
+
+                if self.debug:
+                    #print('policy as json: '+str(temp_policy))
+                    print('policy as dict: '+str(json.loads(temp_policy_string)))
+                    print('dict type: '+str(type(dict_policy)))
+                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.dumps(dict_policy).strip())
 
                 if self.debug:
                     print(response)

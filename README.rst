@@ -42,6 +42,13 @@ Getting help
 
    $bucket-creator create -i config/my.ini
 
+Options
+
+    acl can be: 'private', 'public-read', 'public-read-write', 'authenticated-read', 'aws-exec-read', 'bucket-owner-read','bucket-owner-full-control'
+
+    aes-256 encryption is turned-on by default, and can not be turned off for security reasons
+
+    public_read access can not be turned on for security reasons
 
 Example Ini file
 
