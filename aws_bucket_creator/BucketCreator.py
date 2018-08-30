@@ -42,6 +42,7 @@ class BucketCreator:
         self.bucket_owner_display_name = None
         self.public_write_access = False
         self.region = None
+        self.event_lambda_arn = None
 
 
         if config_block:
@@ -81,6 +82,8 @@ class BucketCreator:
         if 'bucket_policy_path' in self._config:
             self.bucket_policy_path = self._config['bucket_policy_path']
 
+        if 'event_lambda_arn' in self._config:
+            self.event_lambda_arn = self._config['event_lambda_arn']
 
         if 'bucket_policy' in self._config:
             self.bucket_policy = self._config['bucket_policy']
@@ -152,6 +155,37 @@ class BucketCreator:
             self.bucket_policy = self.load_bucket_policy()
             self.add_bucket_policy()
         self.add_lifecycle_policy()
+
+        self.create_bucket_notifications()
+        print('Bucket notifications set')
+
+
+    def create_bucket_notifications(self):
+
+        if self.event_lambda_arn:
+
+            try:
+                response = self.client.put_bucket_notification_configuration(
+                    Bucket=self.bucket_name,
+                    NotificationConfiguration={
+                        'LambdaFunctionConfigurations': [
+                            {
+                                'Id': 'MyEvent',
+                                'LambdaFunctionArn': self.event_lambda_arn,
+                                'Events': [
+                                     's3:ObjectCreated:Put',
+                                ]
+                            }
+                        ]
+                    }
+                )
+
+                if self.debug:
+                    print('response: ' + str(response))
+
+            except ClientError as e:
+                print('Could not get create bucket event: ' + str(e))
+
 
 
     def get_bucket_owner_id(self):
@@ -424,11 +458,9 @@ class BucketCreator:
 
             if self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals)<1):
 
-                temp_policy_string = self.bucket_policy.replace("\n",'')
-                print('string: '+str(temp_policy_string))
 
+                temp_policy_string = self.bucket_policy.replace("\n",'')
                 temp_policy = json.dumps(json.loads(temp_policy_string))
-                print(temp_policy)
 
                 response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=temp_policy)
 

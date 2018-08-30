@@ -21,7 +21,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.9')
+@click.version_option(version='0.0.10')
 def cli():
     pass
 
@@ -161,6 +161,10 @@ def start_create(
         config_dict['days_to_standard_ia'] = ini['parameters']['bucket_policy_path']
     else:
         config_dict['bucket_policy_path'] = None
+
+    if 'event_lambda_arn' in ini['parameters']:
+        config_dict['event_lambda_arn'] = ini['parameters']['event_lambda_arn']
+
 
     creator = BucketCreator(config_dict)
     if debug:
