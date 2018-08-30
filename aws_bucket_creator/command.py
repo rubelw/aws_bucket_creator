@@ -21,7 +21,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.7')
+@click.version_option(version='0.0.8')
 def cli():
     pass
 
@@ -47,9 +47,10 @@ def create(
 
 
     if debug:
-        ini_data['debug'] = True
+        ini_data['parameters']['debug'] = True
     else:
-        ini_data['debug'] = False
+        ini_data['parameters']['debug'] = False
+
 
     if 'region' not in ini_data['environment']:
         ini_data['environment']['region'] = find_myself()
@@ -151,6 +152,10 @@ def start_create(
 
     if 'principals' in ini['parameters']:
         config_dict['bucket_policy_principals'] = ini['parameters']['principals']
+
+    if 'bucket_policy' in ini['parameters']:
+        config_dict['bucket_policy'] = ini['parameters']['bucket_policy']
+
 
     if 'bucket_policy_path' in ini['parameters']:
         config_dict['days_to_standard_ia'] = ini['parameters']['bucket_policy_path']

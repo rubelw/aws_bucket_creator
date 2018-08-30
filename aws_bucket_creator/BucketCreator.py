@@ -72,7 +72,7 @@ class BucketCreator:
         if self._config['days_to_standard_ia']:
             self.days_to_standard_ia = int(self._config['days_to_standard_ia'])
 
-        if self._config['bucket_policy_principals']:
+        if 'bucket_policy_principals' in self._config:
             self.bucket_policy_principals = self._config['bucket_policy_principals'].split(',')
 
         if self._config['bucket_name']:
@@ -80,7 +80,11 @@ class BucketCreator:
 
         if self._config['bucket_policy_path']:
             self.bucket_policy_path = self._config['bucket_policy_path']
-            self.bucket_policy = self.load_bucket_policy()
+
+
+        if self._config['bucket_policy']:
+            self.bucket_policy = self._config['bucket_policy']
+
 
             if self.debug:
                 print('bucket policy is: '+str(self.bucket_policy)+lineno())
@@ -124,15 +128,28 @@ class BucketCreator:
         self.create_tags()
         print('Bucket tags set')
 
-        if self.bucket_policy_principals and not self.bucket_policy_path:
+        if len(self.bucket_policy_principals)>0 and not self.bucket_policy_path:
 
             if self.debug:
                 print('There are principals in the policy but no bucket policy path'+lineno())
-            self.create_bucket_policy()
+
+            if not self.bucket_policy:
+                self.create_bucket_policy()
+            else:
+                if self.debug:
+                    print('## There is a bucket policy being passed-in')
+
             self.add_bucket_policy()
+        elif len(self.bucket_policy_principals)<1 and self.bucket_policy and not self.bucket_policy_path:
+            if self.debug:
+                print('## There is a bucket policy being passed-in')
+
+            self.add_bucket_policy()
+
         elif self.bucket_policy_path:
             if self.debug:
                 print('There is a bucket policy path...creating bucket policy'+lineno())
+            self.bucket_policy = self.load_bucket_policy()
             self.add_bucket_policy()
         self.add_lifecycle_policy()
 
@@ -400,7 +417,23 @@ class BucketCreator:
         try:
 
             if self.debug:
+                print('##############################')
                 print('policy is: '+str(str(self.bucket_policy).replace('"','\''))+lineno())
+                print('##############################')
+
+
+            if self.bucket_policy and (not self.bucket_policy_path and len(self.bucket_policy_principals)<1):
+
+                temp_policy_string = self.bucket_policy.replace("\n",'')
+                print('string: '+str(temp_policy_string))
+
+                temp_policy = json.dumps(json.loads(temp_policy_string))
+                print(temp_policy)
+
+                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=temp_policy)
+
+                if self.debug:
+                    print(response)
 
             if self.bucket_policy_path:
                 response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.loads(json.dumps(self.bucket_policy)))

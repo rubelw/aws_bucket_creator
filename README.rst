@@ -59,7 +59,6 @@ Example Ini file
 
     [parameters]
     bucket_name = test-bucket
-    principals = arn:aws:iam::123456789:root
     acl = bucket-owner-full-control
     public_write_access = True
     days_to_glacier = 365
