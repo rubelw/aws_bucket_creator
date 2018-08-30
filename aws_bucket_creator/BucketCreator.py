@@ -50,39 +50,39 @@ class BucketCreator:
             logging.error('config block was garbage')
             raise SystemError
 
-        if self._config['debug']:
+        if 'debug' in self._config:
             self.debug = self._config['debug']
 
 
-        if self._config['tags']:
+        if 'tags' in self._config:
             self.tags = self._config['tags']
 
-        if self._config['region']:
+        if 'region' in self._config:
             self.region = self._config['region']
 
-        if self._config['public_write_access']:
+        if 'public_write_access' in self._config:
             self.public_write_access = self._config['public_write_access']
 
-        if self._config['acl']:
+        if 'acl' in self._config:
             self.acl = self._config['acl']
 
-        if self._config['days_to_glacier']:
+        if 'days_to_glacier' in self._config:
             self.days_to_glacier = int(self._config['days_to_glacier'])
 
-        if self._config['days_to_standard_ia']:
+        if 'days_to_standard_ia' in self._config:
             self.days_to_standard_ia = int(self._config['days_to_standard_ia'])
 
         if 'bucket_policy_principals' in self._config:
             self.bucket_policy_principals = self._config['bucket_policy_principals'].split(',')
 
-        if self._config['bucket_name']:
+        if 'bucket_name' in self._config:
             self.bucket_name = self._config['bucket_name']
 
-        if self._config['bucket_policy_path']:
+        if 'bucket_policy_path' in self._config:
             self.bucket_policy_path = self._config['bucket_policy_path']
 
 
-        if self._config['bucket_policy']:
+        if 'bucket_policy' in self._config:
             self.bucket_policy = self._config['bucket_policy']
 
 
