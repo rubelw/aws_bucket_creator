@@ -85,12 +85,13 @@ class BucketCreator:
             if self.debug:
                 print('bucket policy is: '+str(self.bucket_policy)+lineno())
 
-
         # Get boto session
         if self.region:
             self.session = boto3.session.Session(profile_name=self._config['aws_profile'], region_name=self.region)
-        else:
+        elif self.aws_profile:
             self.session = boto3.session.Session(profile_name=self._config['aws_profile'])
+        else:
+            self.session = boto3.session.Session()
 
         self.client = self.session.client('s3')
         self.resource = self.session.resource('s3')
