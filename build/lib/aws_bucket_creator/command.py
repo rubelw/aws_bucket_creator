@@ -21,7 +21,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.13')
+@click.version_option(version='0.0.12')
 def cli():
     pass
 
@@ -115,23 +115,17 @@ def start_create(
     if ini['environment']['region']:
         config_dict['region'] = ini['environment']['region']
     tags = []
-
-    found_name_tag = -1
     for tag in ini['tags']:
-
-        if str(tag) == 'Name' or str(tag) == 'name':
-            found_name_tag = 1
         temp_dict = {}
         temp_dict['Key'] = tag
         temp_dict['Value']= ini['tags'][tag]
         tags.append(temp_dict)
 
     # Add bucket name as tag
-    if found_name_tag<0:
-        temp_dict={}
-        temp_dict['Key'] = 'Name'
-        temp_dict['Value']= ini['parameters']['bucket_name']
-        tags.append(temp_dict)
+    temp_dict={}
+    temp_dict['Key'] = 'Name'
+    temp_dict['Value']= ini['parameters']['bucket_name']
+    tags.append(temp_dict)
 
 
     if tags:

@@ -7,7 +7,7 @@ import sys
 
 DESCRIPTION = ("Creates S3 bucket, tags, policy and lifecycle policy via boto3.")
 LONG_DESCRIPTION = open('README.rst').read()
-VERSION = '0.0.12'
+VERSION = '0.0.13'
 
 setup_requires = (
     ['pytest-runner'] if any(x in sys.argv for x in ('pytest', 'test', 'ptr')) else []
