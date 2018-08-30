@@ -62,6 +62,7 @@ class BucketCreator:
         if 'logging_enabled' in self._config:
             self.logging_enabled = self._config['logging_enabled']
 
+
         if 'region' in self._config:
             self.region = self._config['region']
 
@@ -327,21 +328,27 @@ class BucketCreator:
 
     def create_logging(self):
 
-        if self.logging_enabled:
+        if self.debug:
+            print('######################')
+            print('Create logging')
+            print('flag: '+str(self.logging_enabled))
+            print('######################')
 
-            try:
-                response = self.client.get_bucket_logging(
-                    Bucket=self.bucket_name
-                )
+        try:
+            response = self.client.get_bucket_logging(
+                Bucket=self.bucket_name
+            )
+
+            if self.debug:
+                print('bucket logging response: '+str(response))
+
+
+            if not 'LoggingEnabled' in response:
 
                 if self.debug:
-                    print('bucket logging response: '+str(response))
+                    print('no bucket logging')
 
-
-                if not 'LoggingEnabled' in response:
-
-                    if self.debug:
-                        print('no bucket logging')
+                if self.logging_enabled:
 
                     response = self.client.put_bucket_logging(
                         Bucket=self.bucket_name,
@@ -373,8 +380,27 @@ class BucketCreator:
                     if self.debug:
                         print(response)
 
-            except ClientError as e:
-                print('Error creating bucket logging: '+str(e))
+            # If logging is enabled
+            else:
+                if not self.logging_enabled:
+
+                    response = self.client.put_bucket_logging(
+                        Bucket=self.bucket_name,
+                        BucketLoggingStatus={
+                        }
+
+                    )
+
+                    if self.debug:
+                        print(response)
+
+
+
+        except ClientError as e:
+            print('Error creating bucket logging: '+str(e))
+
+
+
 
 
     def create_encryption(self):
