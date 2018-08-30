@@ -5,7 +5,7 @@ AWS Bucket Creator
 Features
 ========
 
-aws-bucket-creator creates a bucket and sets tags, lifecycle, and policy
+aws-bucket-creator creates a bucket, sets tags, logging, encryption, lifecycle, and policy
 
 
 Installation
@@ -30,24 +30,79 @@ Getting help
 
    primary function for creating a bucket :return:
 
-   Options:
-     -d, --days-to_glacier TEXT      number of days before moving to glacier
-     -w, --bucket-policy-principals TEXT
-                                     comma separated list of bucket policy
-                                     principals
-     -b, --bucket-name TEXT          bucket-name  [required]
-     -p, --aws-profile TEXT          aws profile  [required]
-     -r, --required-tags TEXT        comma delimited list of tag key names
-     -t, --required-values TEXT      comma delimited list of tag key values
-     -v, --version                   Print version and exit
-     --debug                         Turn on debugging
-     --help                          Show this message and exit.
+    Options:
+      -i, --ini TEXT  INI file with needed information  [required]
+      -v, --version   Print version and exit
+      --debug         Turn on debugging
+      --help          Show this message and exit.
 
 
 
 .. code:: console
 
-   $bucket-creator create -b test-bucket -p my-profile -r Name,Project,DeployedBy,ResourceOwner -t test,io,test,test -w arn:aws:iam::12343434:root
+   $bucket-creator create -i config/my.ini
+
+
+Example Ini file
+
+.. code:: console
+
+    [environment]
+    region = us-east-1
+    profile = myprofile
+
+    [tags]
+    ResourceOwner = no_me
+    Project = some project
+    DeployedBy = me
+
+
+    [parameters]
+    bucket_name = test-bucket
+    principals = arn:aws:iam::123456789:root
+    acl = bucket-owner-full-control
+    public_write_access = True
+    days_to_glacier = 365
+    days_to_standard_ia = 30
+    bucket_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AllowRoot",
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": [
+                        "arn:aws:iam::123456789:root"
+                    ]
+                },
+                "Action": ["s3:*"],
+                "Resource": [
+                    "arn:aws:s3:::test-bucket/*",
+                    "arn:aws:s3:::test-bucket"
+                ]
+            },
+            {
+                "Sid": "IPAllow",
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": "*"
+                },
+                "Action": "s3:*",
+                "Resource": [
+                    "arn:aws:s3:::test-bucket/*",
+                    "arn:aws:s3:::test-bucket"
+                ],
+                "Condition" : {
+                    "IpAddress" : {
+                        "aws:SourceIp": "192.128.1.1/32"
+                    },
+                    "NotIpAddress" : {
+                        "aws:SourceIp": "192.168.1.1/32"
+                    }
+                }
+            }
+        ]
+      }
 
 
 

@@ -6,7 +6,9 @@ import boto3
 import sys
 import json
 import time
+import os
 from botocore.exceptions import ClientError
+from boto.s3.acl import ACL, Grant
 
 
 
@@ -29,13 +31,18 @@ class BucketCreator:
         self.session = None
         self.client = None
         self.resource = None
-        self.required_tags = None
-        self.required_values = None
-        self.tags = {}
+        self.tags = None
         self.bucket_policy_principals = []
         self.bucket_policy = None
+        self.bucket_policy_path = None
         self.days_to_glacier = 365
         self.days_to_standard_ia = 30
+        self.acl = None
+        self.bucket_owner_id = None
+        self.bucket_owner_display_name = None
+        self.public_write_access = False
+        self.region = None
+
 
         if config_block:
             self._config = config_block
@@ -45,6 +52,19 @@ class BucketCreator:
 
         if self._config['debug']:
             self.debug = self._config['debug']
+
+
+        if self._config['tags']:
+            self.tags = self._config['tags']
+
+        if self._config['region']:
+            self.region = self._config['region']
+
+        if self._config['public_write_access']:
+            self.public_write_access = self._config['public_write_access']
+
+        if self._config['acl']:
+            self.acl = self._config['acl']
 
         if self._config['days_to_glacier']:
             self.days_to_glacier = int(self._config['days_to_glacier'])
@@ -58,50 +78,27 @@ class BucketCreator:
         if self._config['bucket_name']:
             self.bucket_name = self._config['bucket_name']
 
-        if self._config['required_tags']:
-            self.required_tags = self._config['required_tags'].strip('"').strip('\'').strip(' ').split(',')
+        if self._config['bucket_policy_path']:
+            self.bucket_policy_path = self._config['bucket_policy_path']
+            self.bucket_policy = self.load_bucket_policy()
 
-            if self._config['required_tags'] and not self._config['required_values']:
-                print('Need to have required_values set if required_tags is set')
-                sys.exit(1)
-            else:
-                self.required_values = self._config['required_values'].split(',')
-
-                # setup tags dict
-                count_of_tag_names = int(len(self.required_tags))
-                count_of_tag_values = int(len(self.required_values))
-
-                if count_of_tag_values != count_of_tag_names:
-                    print('Need to have the same number of key names and values')
-                    sys.exit(1)
-                else:
-
-                    if self.debug:
-                        print('tag name count: '+str(count_of_tag_names)+lineno())
-                        print('tag value count: '+str(count_of_tag_values)+lineno())
-                        print('required_tags: '+str(self.required_tags)+lineno())
-                        print('required_values: '+str(self.required_values)+lineno())
-
-                    for x in range(0, count_of_tag_names):
-                        if self.debug:
-                            print('count: '+str(x)+lineno())
-                            print('value: '+str(self.required_values[x])+lineno())
-                            print('name: '+str(self.required_tags[x])+lineno())
-                        temp_name = self.required_tags[x]
-                        temp_value = self.required_values[x]
-                        self.tags[str(temp_name)]= str(temp_value)
-
-                    if self.debug:
-                        print('tags are: '+str(self.tags)+lineno())
+            if self.debug:
+                print('bucket policy is: '+str(self.bucket_policy)+lineno())
 
 
         # Get boto session
-        self.session = boto3.session.Session(profile_name=self._config['aws_profile'])
+        if self.region:
+            self.session = boto3.session.Session(profile_name=self._config['aws_profile'], region_name=self.region)
+        else:
+            self.session = boto3.session.Session(profile_name=self._config['aws_profile'])
+
         self.client = self.session.client('s3')
         self.resource = self.session.resource('s3')
 
         if self.debug:
             print('s3 bucket: '+str(self.bucket_name))
+
+
 
 
     def create(self):
@@ -114,14 +111,161 @@ class BucketCreator:
             print('BucketCreator - create'+lineno())
 
         self.create_bucket()
+        print('Bucket created')
+        self.get_bucket_owner_id()
+        print('Found bucket owner id')
+        self.create_acl()
+        print('Bucket acl created')
         self.create_encryption()
+        print('Encryption set')
         self.create_logging()
+        print('Bucket logging set')
         self.create_tags()
+        print('Bucket tags set')
 
-        if self.bucket_policy_principals:
+        if self.bucket_policy_principals and not self.bucket_policy_path:
+
+            if self.debug:
+                print('There are principals in the policy but no bucket policy path'+lineno())
             self.create_bucket_policy()
             self.add_bucket_policy()
+        elif self.bucket_policy_path:
+            if self.debug:
+                print('There is a bucket policy path...creating bucket policy'+lineno())
+            self.add_bucket_policy()
         self.add_lifecycle_policy()
+
+
+    def get_bucket_owner_id(self):
+
+        try:
+            response = self.client.get_bucket_acl(
+                Bucket=self.bucket_name
+            )
+
+            if self.debug:
+                print('response: '+str(response))
+
+            if 'Owner' in response:
+                self.bucket_owner_id = response['Owner']['ID']
+                self.bucket_owner_display_name = response['Owner']['DisplayName']
+
+        except ClientError as e:
+            print('Could not get bucket owner id: '+str(e))
+
+
+
+    def create_acl(self):
+
+        try:
+            response = self.client.get_bucket_logging(
+                Bucket=self.bucket_name
+            )
+
+            if self.debug:
+                print('acl response: '+str(response))
+
+            if self.public_write_access:
+                response = self.client.put_bucket_acl(
+                    Bucket=self.bucket_name,
+                    AccessControlPolicy={
+                        'Grants': [
+                            {
+                                'Grantee': {
+                                    'Type': 'Group',
+                                    'URI': 'http://acs.amazonaws.com/groups/global/AllUsers',
+                                },
+                                'Permission': 'WRITE'
+                            },
+                            {
+                                'Grantee': {
+                                    'Type': 'Group',
+                                    'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                },
+                                'Permission':  'WRITE'
+                            },
+                            {
+                                'Grantee': {
+                                    'Type': 'Group',
+                                    'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                },
+                                'Permission': 'READ_ACP'
+                            },
+                        ],
+                        'Owner': {
+                            'DisplayName': 'Owner',
+                            'ID': self.bucket_owner_id
+                        }
+                    }
+                )
+
+                if self.debug:
+                    print(response)
+
+            else:
+                response = self.client.put_bucket_acl(
+                    Bucket=self.bucket_name,
+                    AccessControlPolicy={
+                        'Grants': [
+                            {
+                                'Grantee': {
+                                    'Type': 'Group',
+                                    'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                },
+                                'Permission':  'WRITE'
+                            },
+                            {
+                                'Grantee': {
+                                    'Type': 'Group',
+                                    'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                },
+                                'Permission': 'READ_ACP'
+                            },
+                        ],
+                        'Owner': {
+                            'DisplayName': 'Owner',
+                            'ID': self.bucket_owner_id
+                        }
+                    }
+                )
+            if self.debug:
+                print(response)
+
+        except ClientError as e:
+            print('Error creating bucket acl: '+str(e))
+
+
+
+    def load_bucket_policy(self):
+        if self.debug:
+            print('load bucket policy')
+            print('current directory is: ' + str(os.getcwd()))
+
+        if str(self.bucket_policy_path).startswith('./'):
+            self.bucket_policy_path = str(os.getcwd())+'/'+str(self.bucket_policy_path.replace('./',''))
+
+            if self.debug:
+                print('new bucket path is: '+str(self.bucket_policy_path))
+        if not str(self.bucket_policy_path).startswith('/'):
+            self.bucket_policy_path = os.getcwd()+'/'+str(self.bucket_policy_path)
+
+            if self.debug:
+                print('new bucket path is: '+str(self.bucket_policy_path))
+
+        try:
+            with open(self.bucket_policy_path, 'r') as tempfile:  # OSError if file exists or is invalid
+                pass
+
+            with open(self.bucket_policy_path) as f:
+                bucket_policy = json.dumps((json.load(f)))
+
+                if self.debug:
+                    print('bucket policy is: ' + str(self.bucket_policy)+lineno())
+
+                return bucket_policy
+
+        except OSError:
+            print('could not open the bucket policy file')
 
 
 
@@ -132,33 +276,49 @@ class BucketCreator:
             response = self.client.get_bucket_logging(
                 Bucket=self.bucket_name
             )
-        except ClientError as e:
-            print('no bucket logging')
 
-            response = self.client.put_bucket_logging(
-                Bucket=self.bucket_name,
-                BucketLoggingStatus={
-                    'LoggingEnabled': {
-                        'TargetBucket': 'string',
-                        'TargetGrants': [
-                            {
-                                'Grantee': {
-                                    'DisplayName': 'string',
-                                    'EmailAddress': 'string',
-                                    'ID': 'string',
-                                    'Type': 'CanonicalUser' | 'AmazonCustomerByEmail' | 'Group',
-                                    'URI': 'string'
+            if self.debug:
+                print('bucket logging response: '+str(response))
+
+
+            if not 'LoggingEnabled' in response:
+
+                if self.debug:
+                    print('no bucket logging')
+
+                response = self.client.put_bucket_logging(
+                    Bucket=self.bucket_name,
+                    BucketLoggingStatus={
+                        'LoggingEnabled': {
+                            'TargetBucket': self.bucket_name,
+                            'TargetPrefix': 'user/',
+                            'TargetGrants': [
+                                {
+                                    'Grantee': {
+                                        'Type': 'Group',
+                                        'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                    },
+                                    'Permission': 'WRITE'
                                 },
-                                'Permission': 'FULL_CONTROL' | 'READ' | 'WRITE'
-                            },
-                        ],
-                        'TargetPrefix': 'string'
+                                {
+                                    'Grantee': {
+                                        'Type': 'Group',
+                                        'URI': 'http://acs.amazonaws.com/groups/s3/LogDelivery'
+                                    },
+                                    'Permission': 'READ'
+                                },
+                            ]
+                        }
                     }
-                },
 
-            )
+                )
 
-            print(response)
+                if self.debug:
+                    print(response)
+
+        except ClientError as e:
+            print('Error creating bucket logging: '+str(e))
+
 
     def create_encryption(self):
 
@@ -166,10 +326,12 @@ class BucketCreator:
             response = self.client.get_bucket_encryption(
                 Bucket=self.bucket_name
             )
-            print(response)
+            if self.debug:
+                print(response)
         except ClientError as e:
-            print('no bucket encryption')
-            print('')
+            if self.debug:
+                print('no bucket encryption')
+
             response = self.client.put_bucket_encryption(
                 Bucket=self.bucket_name,
                 ServerSideEncryptionConfiguration={
@@ -182,7 +344,9 @@ class BucketCreator:
                     ]
                 }
             )
-            print(response)
+
+            if self.debug:
+                print(response)
 
 
     def add_lifecycle_policy(self):
@@ -223,6 +387,8 @@ class BucketCreator:
                 }
             )
 
+            if self.debug:
+                print(response)
         except ClientError as e:
             print('Error adding bucket lifecycle policy: ' + str(e))
 
@@ -231,8 +397,20 @@ class BucketCreator:
         # Add bucket policy
 
         try:
-            response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.dumps(self.bucket_policy))
-            print(response)
+
+            if self.debug:
+                print('policy is: '+str(str(self.bucket_policy).replace('"','\''))+lineno())
+
+            if self.bucket_policy_path:
+                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.loads(json.dumps(self.bucket_policy)))
+
+                if self.debug:
+                    print(response)
+
+            else:
+                response = self.client.put_bucket_policy(Bucket=self.bucket_name, Policy=json.dumps(self.bucket_policy))
+                if self.debug:
+                    print(response)
 
         except ClientError as e:
             print('Error adding bucket policy: ' + str(e))
@@ -264,77 +442,44 @@ class BucketCreator:
         if self.debug:
             print('create tags'+lineno())
 
-        if self.check_bucket():
-            # Bucket already exists - this is good
-            tags_to_check= self.check_tags()
+        while not self.check_bucket():
+            print('Waiting for bucket to be created')
+            print('Sleeping for 5 minutes')
+            time.sleep(300)
 
-            if self.debug:
-                print('tags to check: '+str(tags_to_check))
 
-            if tags_to_check:
+        if self.debug:
+            print('tags to check: '+str(self.tags))
 
-                try:
+        if self.tags:
 
-                    data = []
-                    for tag in tags_to_check:
-                        temp_dict = {}
-                        temp_dict['Key']=str(tag)
-                        temp_dict['Value']= str(self.tags[tag])
+            try:
 
-                        data.append(temp_dict)
-                    if self.debug:
-                        print('new tag info: '+str(data)+lineno())
+                if self.debug:
+                    print('new tag info: '+str(self.tags)+lineno())
 
-                    response = self.client.put_bucket_tagging(
-                        Bucket=str(self.bucket_name),
-                        Tagging={
-                            'TagSet': data
-                        }
-                    )
+                response = self.client.put_bucket_tagging(
+                    Bucket=str(self.bucket_name),
+                    Tagging={
+                        'TagSet': self.tags
+                    }
+                )
 
-                    if self.debug:
-                        print('response: '+str(response))
+                if self.debug:
+                    print('response: '+str(response))
 
-                except ClientError as e:
-                    print('Error creating tags: '+str(e))
+            except ClientError as e:
+                print('Error creating tags: '+str(e))
 
-                    if 'NoSuchTagSet' in str(e):
-                        print('We need to wait for 90 seconds while the bucket gets created in AWS')
-                        time.sleep(90)
-
-                        try:
-
-                            data = []
-                            for tag in tags_to_check:
-                                temp_dict = {}
-                                temp_dict['Key'] = str(tag)
-                                temp_dict['Value'] = str(self.tags[tag])
-
-                                data.append(temp_dict)
-                            if self.debug:
-                                print('new tag info: ' + str(data) + lineno())
-
-                            response = self.client.put_bucket_tagging(
-                                Bucket=str(self.bucket_name),
-                                Tagging={
-                                    'TagSet': data
-                                }
-                            )
-
-                            if self.debug:
-                                print('response: ' + str(response))
-
-                        except ClientError as err:
-                            print('Error creating tags: ' + str(err))
-
-            else:
-                print('Create the bucket before trying to add tags')
-                sys.exit(1)
+        else:
+            print('Create the bucket before trying to add tags')
+            sys.exit(1)
 
 
     def create_bucket(self):
         if self.debug:
             print('create bucket'+lineno())
+            print('bucket name: '+str(self.bucket_name))
 
         if self.check_bucket():
             # Bucket already exists
@@ -343,43 +488,16 @@ class BucketCreator:
             # Create bucket
 
             try:
-                print('Creating bucket')
+                if self.debug:
+                    print('Creating bucket')
                 response = self.client.create_bucket(Bucket=str(self.bucket_name))
 
-
-                print('response: '+str(response)+lineno())
+                if self.debug:
+                    print('response: '+str(response)+lineno())
 
             except ClientError as e:
                 print('Error: '+str(e))
                 sys.exit(1)
-
-    def check_tags(self):
-
-        if self.required_tags and len(self.required_tags)>0:
-
-            try:
-
-                response = self.client.get_bucket_tagging(
-                    Bucket=str(self.bucket_name)
-                )
-
-                tags = {}
-                for tag in self.required_tags:
-                    tags[tag] = False
-
-
-                if 'TagSet' in response:
-                    for tagset in response['TagSet']:
-
-                        if tagset['Key'] in tags:
-                            if self.debug:
-                                print('found key'+lineno())
-
-                            tags[tagset['Key']] = True
-
-                return tags
-            except botocore.exceptions.ClientError as e:
-                print('Error checking tags: '+str(e)+lineno())
 
 
     def check_bucket(self):
@@ -401,3 +519,7 @@ class BucketCreator:
                 if self.debug:
                     print("Bucket Does Not Exist!")
                 return False
+
+
+
+
