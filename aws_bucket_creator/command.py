@@ -19,7 +19,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.16')
+@click.version_option(version='0.0.17')
 def cli():
     pass
 

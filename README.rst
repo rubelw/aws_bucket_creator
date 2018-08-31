@@ -26,7 +26,7 @@ Getting help
 .. code:: console
 
    $ bucket-creator create --help
-   Usage: bucket-creator create [OPTIONS]
+   Usage: bucket-creator upsert [OPTIONS]
 
    primary function for creating a bucket :return:
 
