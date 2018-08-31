@@ -19,7 +19,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.15')
+@click.version_option(version='0.0.16')
 def cli():
     pass
 
@@ -28,7 +28,7 @@ def cli():
 @click.option('--ini', '-i', help='INI file with needed information', required=True)
 @click.option('--version', '-v', help='Print version and exit', required=False, is_flag=True)
 @click.option('--debug', help='Turn on debugging', required=False, is_flag=True)
-def create(
+def upsert(
         ini,
         version,
         debug

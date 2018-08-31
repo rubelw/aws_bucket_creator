@@ -40,7 +40,7 @@ Getting help
 
 .. code:: console
 
-   bucket-creator create -i config/my.ini
+   bucket-creator upsert -i config/my.ini
 
 Options
 
