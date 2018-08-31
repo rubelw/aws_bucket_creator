@@ -47,6 +47,8 @@ class BucketCreator:
         self.region = None
         self.event_lambda_arn = None
         self.logging_enabled = False
+        self.notification_prefix = None
+        self.notification_suffix = None
 
 
         if config_block:
@@ -61,6 +63,12 @@ class BucketCreator:
 
         if 'tags' in self._config:
             self.tags = self._config['tags']
+
+        if 'notification_prefix' in self._config:
+            self.notification_prefix = self._config['notification_prefix']
+
+        if 'notification_suffix' in self._config:
+            self.notification_suffix = self._config['notification_suffix']
 
         if 'logging_enabled' in self._config:
             self.logging_enabled = self._config['logging_enabled']
@@ -165,6 +173,7 @@ class BucketCreator:
             self.bucket_policy = self.load_bucket_policy()
             self.add_bucket_policy()
         self.add_lifecycle_policy()
+        print('Lifecycle policy added')
 
         self.create_bucket_notifications()
         print('Bucket notifications set')
@@ -177,10 +186,8 @@ class BucketCreator:
         """
         if self.event_lambda_arn:
 
-            try:
-                response = self.client.put_bucket_notification_configuration(
-                    Bucket=self.bucket_name,
-                    NotificationConfiguration={
+
+            data = {
                         'LambdaFunctionConfigurations': [
                             {
                                 'Id': 'MyEvent',
@@ -191,6 +198,49 @@ class BucketCreator:
                             }
                         ]
                     }
+
+            if self.notification_suffix:
+                data['LambdaFunctionConfigurations'][0]['Filter']={}
+                data['LambdaFunctionConfigurations'][0]['Filter']['Key'] = {}
+                data['LambdaFunctionConfigurations'][0]['Filter']['Key']['FilterRules']=[]
+                temp_dict = {}
+                temp_dict['Name']= 'suffix'
+                temp_dict['Value'] = str(self.notification_suffix)
+                data['LambdaFunctionConfigurations'][0]['Filter']['Key']['FilterRules'].append(temp_dict)
+
+
+            if self.notification_prefix:
+
+                if self.debug:
+                    print('## There is a prefix')
+
+                # If an existing filter exists
+                if 'Filter' in  data['LambdaFunctionConfigurations'][0]:
+                    temp_dict = {}
+                    temp_dict['Name'] = 'prefix'
+                    temp_dict['Value'] = str(self.notification_prefix)
+                    data['LambdaFunctionConfigurations'][0]['Filter']['Key']['FilterRules'].append(temp_dict)
+                else:
+                    if self.debug:
+                        print('There is not an existing filter')
+
+                    data['LambdaFunctionConfigurations'][0]['Filter'] = {}
+                    data['LambdaFunctionConfigurations'][0]['Filter']['Key'] = {}
+                    data['LambdaFunctionConfigurations'][0]['Filter']['Key']['FilterRules'] = []
+                    temp_dict = {}
+                    temp_dict['Name'] = 'prefix'
+                    temp_dict['Value'] = str(self.notification_prefix)
+                    data['LambdaFunctionConfigurations'][0]['Filter']['Key']['FilterRules'].append(temp_dict)
+
+
+            try:
+
+                if self.debug:
+                    print('notification data is: '+str(json.dumps(data)))
+
+                response = self.client.put_bucket_notification_configuration(
+                    Bucket=self.bucket_name,
+                    NotificationConfiguration=data
                 )
 
                 if self.debug:
@@ -237,6 +287,11 @@ class BucketCreator:
                 print('acl response: '+str(response))
 
             if self.public_write_access:
+
+                if self.debug:
+                    print('setting acl to public write')
+
+
                 response = self.client.put_bucket_acl(
                     Bucket=self.bucket_name,
                     AccessControlPolicy={
@@ -274,6 +329,10 @@ class BucketCreator:
                     print(response)
 
             else:
+
+                if self.debug:
+                    print('## Setting access control to bucket owner only')
+
                 response = self.client.put_bucket_acl(
                     Bucket=self.bucket_name,
                     AccessControlPolicy={
@@ -537,6 +596,7 @@ class BucketCreator:
 
                 response = self.client.put_bucket_policy(
                     Bucket=self.bucket_name,
+                    ConfirmRemoveSelfBucketAccess=False,
                     Policy=json.dumps(dict_policy).strip()
                 )
 

@@ -19,7 +19,7 @@ def lineno():
 
 
 @click.group()
-@click.version_option(version='0.0.17')
+@click.version_option(version='0.0.18')
 def cli():
     pass
 
@@ -139,8 +139,18 @@ def start_create(
     else:
         config_dict['logging_enabled'] = False
 
+
+    if 'notification_prefix' in ini['parameters']:
+        config_dict['notification_prefix'] = ini['parameters']['notification_prefix']
+
+    if 'notification_suffix' in ini['parameters']:
+        config_dict['notification_suffix'] = ini['parameters']['notification_suffix']
+
     if 'public_write_access' in ini['parameters']:
         config_dict['public_write_access'] = ini['parameters']['public_write_access']
+    else:
+        config_dict['public_write_access'] = False
+
 
     if 'acl' in ini['parameters']:
         config_dict['acl'] = ini['parameters']['acl']

@@ -72,6 +72,8 @@ Example Ini file
     days_to_glacier = 365
     days_to_standard_ia = 30
     event_lambda_arn = arn:aws:lambda:us-east-1:123456789:function:my-lambda
+    notification_prefix = input/
+    notification_suffix = .jpg
     bucket_policy = {
         "Version": "2012-10-17",
         "Statement": [
