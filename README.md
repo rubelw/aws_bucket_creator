@@ -1,16 +1,12 @@
-
 AWS Bucket Creator
 ==================
-
 Features
 ========
-
 aws-bucket-creator creates a bucket, sets tags, logging, encryption, lifecycle, and policy
 
 
 Installation
 ============
-
 aws-bucket-creator is on PyPI so all you need is:
 
 .. code:: console
@@ -18,9 +14,15 @@ aws-bucket-creator is on PyPI so all you need is:
    $ pip install aws-bucket-creator
 
 
+Demonstration
+=============
+
+<p><a target="_blank" rel="noopener noreferrer" href="https://github.com/rubelw//aws_bucket_creator/blob/master/images/demo.gif"><img src="https://github.com/rubelw//aws_bucket_creator/raw/master/images/demo.gif" alt="aws_bucket_creator tutorial" style="max-width:100%;"></a></p>
+
+
+
 Example
 =======
-
 Getting help
 
 .. code:: console
@@ -113,6 +115,3 @@ Example Ini file
             }
         ]
       }
-
-
-

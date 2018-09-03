@@ -3,11 +3,17 @@
 from __future__ import absolute_import, division, print_function
 from setuptools import setup, find_packages
 import sys
+from os import path
+from io import open
 
 
 DESCRIPTION = ("Creates S3 bucket, tags, policy and lifecycle policy via boto3.")
-LONG_DESCRIPTION = open('README.rst').read()
-VERSION = '0.0.18'
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    LONG_DESCRIPTION = f.read()
+
+
+VERSION = '0.0.19'
 
 setup_requires = (
     ['pytest-runner'] if any(x in sys.argv for x in ('pytest', 'test', 'ptr')) else []
@@ -21,6 +27,7 @@ setup(
     author='Will Rubel',
     author_email='willrubel@gmail.com',
     long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     platforms=["any"],
     packages=find_packages(),
     include_package_data=True,

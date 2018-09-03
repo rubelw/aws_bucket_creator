@@ -126,6 +126,14 @@ class BucketCreator:
         if self.debug:
             print('s3 bucket: '+str(self.bucket_name))
 
+    def delete(self):
+
+        if self.debug:
+            print('BucketCreator - delete'+lineno())
+
+        self.delete_bucket()
+        print('Bucket deleted')
+
 
     def create(self):
         """
@@ -270,6 +278,7 @@ class BucketCreator:
 
         except ClientError as err:
             print('Could not get bucket owner id: '+str(err))
+            sys.exit(1)
 
 
 
@@ -648,6 +657,7 @@ class BucketCreator:
         while not self.check_bucket():
             print('Waiting for bucket to be created')
             print('Sleeping for 5 minutes')
+            print('While the bucket is created, we have to wait in order to add tags and other permissions, 5 minutes is the typical time you need to wait.')
             time.sleep(300)
 
 
@@ -677,6 +687,35 @@ class BucketCreator:
         else:
             print('Create the bucket before trying to add tags')
             sys.exit(1)
+
+
+
+    def delete_bucket(self):
+        """
+        Create an S3 Bucket
+        :return:
+        """
+        if self.debug:
+            print('delete bucket'+lineno())
+            print('bucket name: '+str(self.bucket_name))
+
+        if self.check_bucket():
+            # Bucket already exists
+            # Delete bucket
+
+            try:
+                if self.debug:
+                    print('Deleting bucket')
+                response = self.client.delete_bucket(Bucket=str(self.bucket_name))
+
+                if self.debug:
+                    print('response: '+str(response)+lineno())
+
+            except ClientError as err:
+                print('Error: '+str(err))
+                sys.exit(1)
+        else:
+            return
 
 
     def create_bucket(self):
